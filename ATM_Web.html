@@ -786,12 +786,16 @@
 
         // ===== Initialize =====
         function init() {
+            // Always show login screen on page load (don't auto-login)
             if (state.blocked) {
                 showScreen('blockedScreen');
             } else {
                 showScreen('loginScreen');
                 document.getElementById('attemptsCount').textContent = state.attempts;
             }
+            // Clear any previous login by ensuring we start at login
+            enteredPin = '';
+            updateDots();
         }
 
         // ===== Keyboard Support =====

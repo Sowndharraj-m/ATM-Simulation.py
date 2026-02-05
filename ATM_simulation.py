@@ -1,6 +1,6 @@
 def atm_simulation():
     pin = "1234"
-    balance = 5000.0
+    balance = 100000
     tries = 3
 
     print("=== Welcome to Python ATM ===")
