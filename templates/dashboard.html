@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATM Dashboard - Python ATM</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="atm-card">
+        <div class="atm-header">
+            <h1>🏧 Python ATM</h1>
+            <p>Welcome back!</p>
+        </div>
+
+        <div id="message-container"></div>
+
+        <div class="balance-card">
+            <div class="balance-label">Available Balance</div>
+            <div class="balance-amount" id="balanceDisplay">₹{{ "%.2f"|format(balance) }}</div>
+        </div>
+
+        <div class="menu-grid">
+            <button class="menu-btn deposit" onclick="openModal('deposit')">
+                <span class="icon">💰</span>
+                <span>Deposit</span>
+            </button>
+            <button class="menu-btn withdraw" onclick="openModal('withdraw')">
+                <span class="icon">💸</span>
+                <span>Withdraw</span>
+            </button>
+            <button class="menu-btn change-pin" onclick="openModal('changePin')">
+                <span class="icon">🔐</span>
+                <span>Change PIN</span>
+            </button>
+            <a href="{{ url_for('logout') }}" class="menu-btn logout">
+                <span class="icon">🚪</span>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Deposit Modal -->
+    <div class="modal" id="depositModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💰 Deposit Money</h2>
+            </div>
+            <div id="depositMessage"></div>
+            <div class="form-group">
+                <label>Enter Amount (₹)</label>
+                <input type="number" id="depositAmount" placeholder="Enter amount" min="1" step="0.01">
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeModal('deposit')">Cancel</button>
+                <button class="btn btn-primary" onclick="deposit()">Deposit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Withdraw Modal -->
+    <div class="modal" id="withdrawModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💸 Withdraw Money</h2>
+            </div>
+            <div id="withdrawMessage"></div>
+            <div class="form-group">
+                <label>Enter Amount (₹)</label>
+                <input type="number" id="withdrawAmount" placeholder="Enter amount" min="1" step="0.01">
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeModal('withdraw')">Cancel</button>
+                <button class="btn btn-primary" onclick="withdraw()">Withdraw</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change PIN Modal -->
+    <div class="modal" id="changePinModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔐 Change PIN</h2>
+            </div>
+            <div id="changePinMessage"></div>
+            <div class="form-group">
+                <label>Current PIN</label>
+                <input type="password" id="oldPin" placeholder="Enter current PIN" maxlength="4">
+            </div>
+            <div class="form-group">
+                <label>New PIN (4 digits)</label>
+                <input type="password" id="newPin" placeholder="Enter new PIN" maxlength="4">
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeModal('changePin')">Cancel</button>
+                <button class="btn btn-primary" onclick="changePin()">Change PIN</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentBalance = {{ balance }};
+
+        function updateBalanceDisplay() {
+            document.getElementById('balanceDisplay').textContent = '₹' + currentBalance.toFixed(2);
+        }
+
+        function openModal(type) {
+            document.getElementById(type + 'Modal').classList.add('active');
+        }
+
+        function closeModal(type) {
+            document.getElementById(type + 'Modal').classList.remove('active');
+            // Clear inputs and messages
+            if (type === 'deposit') {
+                document.getElementById('depositAmount').value = '';
+                document.getElementById('depositMessage').innerHTML = '';
+            } else if (type === 'withdraw') {
+                document.getElementById('withdrawAmount').value = '';
+                document.getElementById('withdrawMessage').innerHTML = '';
+            } else if (type === 'changePin') {
+                document.getElementById('oldPin').value = '';
+                document.getElementById('newPin').value = '';
+                document.getElementById('changePinMessage').innerHTML = '';
+            }
+        }
+
+        function showModalMessage(modalType, text, type) {
+            const container = document.getElementById(modalType + 'Message');
+            container.innerHTML = `<div class="message ${type}">${text}</div>`;
+        }
+
+        function showMainMessage(text, type) {
+            const container = document.getElementById('message-container');
+            container.innerHTML = `<div class="message ${type}">${text}</div>`;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 3000);
+        }
+
+        async function deposit() {
+            const amount = parseFloat(document.getElementById('depositAmount').value);
+
+            if (!amount || amount <= 0) {
+                showModalMessage('deposit', 'Please enter a valid amount', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/deposit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: amount })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentBalance = data.balance;
+                    updateBalanceDisplay();
+                    closeModal('deposit');
+                    showMainMessage(data.message, 'success');
+                } else {
+                    showModalMessage('deposit', data.error, 'error');
+                }
+            } catch (error) {
+                showModalMessage('deposit', 'Connection error', 'error');
+            }
+        }
+
+        async function withdraw() {
+            const amount = parseFloat(document.getElementById('withdrawAmount').value);
+
+            if (!amount || amount <= 0) {
+                showModalMessage('withdraw', 'Please enter a valid amount', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/withdraw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: amount })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentBalance = data.balance;
+                    updateBalanceDisplay();
+                    closeModal('withdraw');
+                    showMainMessage(data.message, 'success');
+                } else {
+                    showModalMessage('withdraw', data.error, 'error');
+                }
+            } catch (error) {
+                showModalMessage('withdraw', 'Connection error', 'error');
+            }
+        }
+
+        async function changePin() {
+            const oldPin = document.getElementById('oldPin').value;
+            const newPin = document.getElementById('newPin').value;
+
+            if (!oldPin || oldPin.length !== 4) {
+                showModalMessage('changePin', 'Please enter your current 4-digit PIN', 'error');
+                return;
+            }
+
+            if (!newPin || newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
+                showModalMessage('changePin', 'New PIN must be exactly 4 digits', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/change-pin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ old_pin: oldPin, new_pin: newPin })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    closeModal('changePin');
+                    showMainMessage(data.message, 'success');
+                } else {
+                    showModalMessage('changePin', data.error, 'error');
+                }
+            } catch (error) {
+                showModalMessage('changePin', 'Connection error', 'error');
+            }
+        }
+
+        // Close modal when clicking outside
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function (e) {
+                if (e.target === this) {
+                    const modalId = this.id.replace('Modal', '');
+                    closeModal(modalId);
+                }
+            });
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.active').forEach(modal => {
+                    const modalId = modal.id.replace('Modal', '');
+                    closeModal(modalId);
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

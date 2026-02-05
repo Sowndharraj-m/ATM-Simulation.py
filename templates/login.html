@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATM Login - Python ATM</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="atm-card">
+        {% if blocked %}
+        <div class="blocked-message">
+            <div class="icon">🔒</div>
+            <h2>Card Blocked</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">Too many wrong attempts. Please contact support.</p>
+            <a href="{{ url_for('reset') }}" class="btn btn-primary" style="display: inline-block; text-decoration: none;">Reset ATM</a>
+        </div>
+        {% else %}
+        <div class="atm-header">
+            <h1>🏧 Python ATM</h1>
+            <p>Enter your 4-digit PIN</p>
+        </div>
+
+        <div id="message-container"></div>
+
+        <div class="pin-display">
+            <div class="pin-dot" id="dot1"></div>
+            <div class="pin-dot" id="dot2"></div>
+            <div class="pin-dot" id="dot3"></div>
+            <div class="pin-dot" id="dot4"></div>
+        </div>
+
+        <div class="keypad">
+            <button class="key" onclick="addDigit('1')">1</button>
+            <button class="key" onclick="addDigit('2')">2</button>
+            <button class="key" onclick="addDigit('3')">3</button>
+            <button class="key" onclick="addDigit('4')">4</button>
+            <button class="key" onclick="addDigit('5')">5</button>
+            <button class="key" onclick="addDigit('6')">6</button>
+            <button class="key" onclick="addDigit('7')">7</button>
+            <button class="key" onclick="addDigit('8')">8</button>
+            <button class="key" onclick="addDigit('9')">9</button>
+            <button class="key clear" onclick="clearPin()">C</button>
+            <button class="key" onclick="addDigit('0')">0</button>
+            <button class="key enter" onclick="submitPin()">✓</button>
+        </div>
+
+        <div class="attempts-warning" id="attemptsWarning">
+            Attempts remaining: <span id="attemptsCount">{{ attempts }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        let pin = '';
+        let attempts = {{ attempts if attempts else 3 }};
+
+        function updateDots() {
+            for (let i = 1; i <= 4; i++) {
+                const dot = document.getElementById('dot' + i);
+                if (i <= pin.length) {
+                    dot.classList.add('filled');
+                } else {
+                    dot.classList.remove('filled');
+                }
+            }
+        }
+
+        function addDigit(digit) {
+            if (pin.length < 4) {
+                pin += digit;
+                updateDots();
+            }
+        }
+
+        function clearPin() {
+            pin = '';
+            updateDots();
+            hideMessage();
+        }
+
+        function showMessage(text, type) {
+            const container = document.getElementById('message-container');
+            container.innerHTML = `<div class="message ${type}">${text}</div>`;
+        }
+
+        function hideMessage() {
+            document.getElementById('message-container').innerHTML = '';
+        }
+
+        async function submitPin() {
+            if (pin.length !== 4) {
+                showMessage('Please enter 4 digits', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/verify-pin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin: pin })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('PIN verified! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1000);
+                } else {
+                    if (data.blocked) {
+                        window.location.reload();
+                    } else {
+                        showMessage(data.error, 'error');
+                        document.getElementById('attemptsCount').textContent = data.attempts;
+                        clearPin();
+                    }
+                }
+            } catch (error) {
+                showMessage('Connection error. Please try again.', 'error');
+            }
+        }
+
+        // Keyboard support
+        document.addEventListener('keydown', function(e) {
+            if (e.key >= '0' && e.key <= '9') {
+                addDigit(e.key);
+            } else if (e.key === 'Backspace' || e.key === 'Delete') {
+                clearPin();
+            } else if (e.key === 'Enter') {
+                submitPin();
+            }
+        });
+    </script>
+</body>
+</html>

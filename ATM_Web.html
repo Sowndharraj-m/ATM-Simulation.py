@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏧 Python ATM - Web Version</title>
+    <style>
+        /* ===== CSS Variables ===== */
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            --card-bg: rgba(255, 255, 255, 0.08);
+            --card-border: rgba(255, 255, 255, 0.15);
+            --primary: #6366f1;
+            --primary-hover: #818cf8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --shadow: 0 25px 45px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ===== Reset & Base ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            background: var(--bg-gradient);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        /* ===== Glassmorphism Card ===== */
+        .atm-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: var(--shadow);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== Headers ===== */
+        .atm-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .atm-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .atm-header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* ===== Screens ===== */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* ===== PIN Display ===== */
+        .pin-display {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .pin-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .pin-dot.filled {
+            background: var(--primary);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+        }
+
+        /* ===== Keypad ===== */
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .key {
+            height: 65px;
+            border: none;
+            border-radius: 16px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            transition: all 0.2s ease;
+        }
+
+        .key:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .key:active {
+            transform: scale(0.95);
+        }
+
+        .key.clear {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .key.clear:hover {
+            background: rgba(239, 68, 68, 0.5);
+        }
+
+        .key.enter {
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+        }
+
+        .key.enter:hover {
+            background: linear-gradient(135deg, var(--primary-hover), #c084fc);
+        }
+
+        /* ===== Balance Display ===== */
+        .balance-card {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .balance-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+        }
+
+        .balance-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .balance-amount {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        /* ===== Menu Buttons ===== */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .menu-btn {
+            padding: 25px 20px;
+            border: none;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .menu-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+        }
+
+        .menu-btn .icon {
+            font-size: 1.8rem;
+        }
+
+        .menu-btn.deposit {
+            border-left: 3px solid var(--success);
+        }
+
+        .menu-btn.withdraw {
+            border-left: 3px solid var(--warning);
+        }
+
+        .menu-btn.change-pin {
+            border-left: 3px solid var(--primary);
+        }
+
+        .menu-btn.logout {
+            border-left: 3px solid var(--danger);
+        }
+
+        /* ===== Modal ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 380px;
+            animation: scaleIn 0.3s ease;
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        /* ===== Form Elements ===== */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        /* ===== Action Buttons ===== */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #a855f7);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* ===== Messages ===== */
+        .message {
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-10px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .message.success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        /* ===== Attempts Warning ===== */
+        .attempts-warning {
+            text-align: center;
+            margin-top: 15px;
+            color: var(--warning);
+            font-size: 0.9rem;
+        }
+
+        /* ===== Blocked State ===== */
+        .blocked-message {
+            text-align: center;
+            padding: 30px;
+        }
+
+        .blocked-message .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .blocked-message h2 {
+            color: var(--danger);
+            margin-bottom: 10px;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 480px) {
+            .atm-card {
+                margin: 20px;
+                padding: 25px;
+            }
+
+            .balance-amount {
+                font-size: 2rem;
+            }
+
+            .key {
+                height: 55px;
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="atm-card">
+        <!-- LOGIN SCREEN -->
+        <div class="screen active" id="loginScreen">
+            <div class="atm-header">
+                <h1>🏧 Python ATM</h1>
+                <p>Enter your 4-digit PIN</p>
+            </div>
+
+            <div id="loginMessage"></div>
+
+            <div class="pin-display">
+                <div class="pin-dot" id="dot1"></div>
+                <div class="pin-dot" id="dot2"></div>
+                <div class="pin-dot" id="dot3"></div>
+                <div class="pin-dot" id="dot4"></div>
+            </div>
+
+            <div class="keypad">
+                <button class="key" onclick="addDigit('1')">1</button>
+                <button class="key" onclick="addDigit('2')">2</button>
+                <button class="key" onclick="addDigit('3')">3</button>
+                <button class="key" onclick="addDigit('4')">4</button>
+                <button class="key" onclick="addDigit('5')">5</button>
+                <button class="key" onclick="addDigit('6')">6</button>
+                <button class="key" onclick="addDigit('7')">7</button>
+                <button class="key" onclick="addDigit('8')">8</button>
+                <button class="key" onclick="addDigit('9')">9</button>
+                <button class="key clear" onclick="clearPin()">C</button>
+                <button class="key" onclick="addDigit('0')">0</button>
+                <button class="key enter" onclick="submitPin()">✓</button>
+            </div>
+
+            <div class="attempts-warning">
+                Attempts remaining: <span id="attemptsCount">3</span>
+            </div>
+        </div>
+
+        <!-- BLOCKED SCREEN -->
+        <div class="screen" id="blockedScreen">
+            <div class="blocked-message">
+                <div class="icon">🔒</div>
+                <h2>Card Blocked</h2>
+                <p style="color: var(--text-muted); margin-bottom: 20px;">Too many wrong attempts.</p>
+                <button class="btn btn-primary" onclick="resetATM()">Reset ATM</button>
+            </div>
+        </div>
+
+        <!-- DASHBOARD SCREEN -->
+        <div class="screen" id="dashboardScreen">
+            <div class="atm-header">
+                <h1>🏧 Python ATM</h1>
+                <p>Welcome back!</p>
+            </div>
+
+            <div id="dashboardMessage"></div>
+
+            <div class="balance-card">
+                <div class="balance-label">Available Balance</div>
+                <div class="balance-amount" id="balanceDisplay">₹5000.00</div>
+            </div>
+
+            <div class="menu-grid">
+                <button class="menu-btn deposit" onclick="openModal('deposit')">
+                    <span class="icon">💰</span>
+                    <span>Deposit</span>
+                </button>
+                <button class="menu-btn withdraw" onclick="openModal('withdraw')">
+                    <span class="icon">💸</span>
+                    <span>Withdraw</span>
+                </button>
+                <button class="menu-btn change-pin" onclick="openModal('changePin')">
+                    <span class="icon">🔐</span>
+                    <span>Change PIN</span>
+                </button>
+                <button class="menu-btn logout" onclick="logout()">
+                    <span class="icon">🚪</span>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deposit Modal -->
+    <div class="modal" id="depositModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💰 Deposit Money</h2>
+            </div>
+            <div id="depositMessage"></div>
+            <div class="form-group">
+                <label>Enter Amount (₹)</label>
+                <input type="number" id="depositAmount" placeholder="Enter amount" min="1" step="0.01">
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeModal('deposit')">Cancel</button>
+                <button class="btn btn-primary" onclick="deposit()">Deposit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Withdraw Modal -->
+    <div class="modal" id="withdrawModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💸 Withdraw Money</h2>
+            </div>
+            <div id="withdrawMessage"></div>
+            <div class="form-group">
+                <label>Enter Amount (₹)</label>
+                <input type="number" id="withdrawAmount" placeholder="Enter amount" min="1" step="0.01">
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeModal('withdraw')">Cancel</button>
+                <button class="btn btn-primary" onclick="withdraw()">Withdraw</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change PIN Modal -->
+    <div class="modal" id="changePinModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔐 Change PIN</h2>
+            </div>
+            <div id="changePinMessage"></div>
+            <div class="form-group">
+                <label>Current PIN</label>
+                <input type="password" id="oldPin" placeholder="Enter current PIN" maxlength="4">
+            </div>
+            <div class="form-group">
+                <label>New PIN (4 digits)</label>
+                <input type="password" id="newPin" placeholder="Enter new PIN" maxlength="4">
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeModal('changePin')">Cancel</button>
+                <button class="btn btn-primary" onclick="changePin()">Change PIN</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== ATM State =====
+        let state = {
+            pin: localStorage.getItem('atm_pin') || '1234',
+            balance: parseFloat(localStorage.getItem('atm_balance')) || 5000.0,
+            attempts: parseInt(localStorage.getItem('atm_attempts')) || 3,
+            blocked: localStorage.getItem('atm_blocked') === 'true'
+        };
+
+        let enteredPin = '';
+
+        // ===== Save State =====
+        function saveState() {
+            localStorage.setItem('atm_pin', state.pin);
+            localStorage.setItem('atm_balance', state.balance);
+            localStorage.setItem('atm_attempts', state.attempts);
+            localStorage.setItem('atm_blocked', state.blocked);
+        }
+
+        // ===== Screen Navigation =====
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // ===== PIN Entry =====
+        function updateDots() {
+            for (let i = 1; i <= 4; i++) {
+                const dot = document.getElementById('dot' + i);
+                if (i <= enteredPin.length) {
+                    dot.classList.add('filled');
+                } else {
+                    dot.classList.remove('filled');
+                }
+            }
+        }
+
+        function addDigit(digit) {
+            if (enteredPin.length < 4) {
+                enteredPin += digit;
+                updateDots();
+            }
+        }
+
+        function clearPin() {
+            enteredPin = '';
+            updateDots();
+            hideMessage('login');
+        }
+
+        function submitPin() {
+            if (enteredPin.length !== 4) {
+                showMessage('login', 'Please enter 4 digits', 'error');
+                return;
+            }
+
+            if (enteredPin === state.pin) {
+                showMessage('login', 'PIN verified! ✅', 'success');
+                state.attempts = 3;
+                saveState();
+                setTimeout(() => {
+                    updateBalanceDisplay();
+                    showScreen('dashboardScreen');
+                    clearPin();
+                    hideMessage('login');
+                }, 800);
+            } else {
+                state.attempts--;
+                saveState();
+
+                if (state.attempts <= 0) {
+                    state.blocked = true;
+                    saveState();
+                    showScreen('blockedScreen');
+                } else {
+                    showMessage('login', `Wrong PIN ❌ (${state.attempts} attempts left)`, 'error');
+                    document.getElementById('attemptsCount').textContent = state.attempts;
+                    clearPin();
+                }
+            }
+        }
+
+        // ===== Dashboard =====
+        function updateBalanceDisplay() {
+            document.getElementById('balanceDisplay').textContent = '₹' + state.balance.toFixed(2);
+        }
+
+        function logout() {
+            showScreen('loginScreen');
+            clearPin();
+            hideMessage('dashboard');
+        }
+
+        // ===== Modals =====
+        function openModal(type) {
+            document.getElementById(type + 'Modal').classList.add('active');
+        }
+
+        function closeModal(type) {
+            document.getElementById(type + 'Modal').classList.remove('active');
+            if (type === 'deposit') {
+                document.getElementById('depositAmount').value = '';
+                hideMessage('deposit');
+            } else if (type === 'withdraw') {
+                document.getElementById('withdrawAmount').value = '';
+                hideMessage('withdraw');
+            } else if (type === 'changePin') {
+                document.getElementById('oldPin').value = '';
+                document.getElementById('newPin').value = '';
+                hideMessage('changePin');
+            }
+        }
+
+        // ===== Messages =====
+        function showMessage(type, text, msgType) {
+            const container = document.getElementById(type + 'Message');
+            container.innerHTML = `<div class="message ${msgType}">${text}</div>`;
+        }
+
+        function hideMessage(type) {
+            const container = document.getElementById(type + 'Message');
+            if (container) container.innerHTML = '';
+        }
+
+        function showDashboardMessage(text, type) {
+            showMessage('dashboard', text, type);
+            setTimeout(() => hideMessage('dashboard'), 3000);
+        }
+
+        // ===== Transactions =====
+        function deposit() {
+            const amount = parseFloat(document.getElementById('depositAmount').value);
+
+            if (!amount || amount <= 0) {
+                showMessage('deposit', 'Please enter a valid amount', 'error');
+                return;
+            }
+
+            state.balance += amount;
+            saveState();
+            updateBalanceDisplay();
+            closeModal('deposit');
+            showDashboardMessage(`Deposited ₹${amount.toFixed(2)} successfully! ✅`, 'success');
+        }
+
+        function withdraw() {
+            const amount = parseFloat(document.getElementById('withdrawAmount').value);
+
+            if (!amount || amount <= 0) {
+                showMessage('withdraw', 'Please enter a valid amount', 'error');
+                return;
+            }
+
+            if (amount > state.balance) {
+                showMessage('withdraw', 'Insufficient balance ❌', 'error');
+                return;
+            }
+
+            state.balance -= amount;
+            saveState();
+            updateBalanceDisplay();
+            closeModal('withdraw');
+            showDashboardMessage(`Withdrawn ₹${amount.toFixed(2)} successfully! ✅`, 'success');
+        }
+
+        function changePin() {
+            const oldPin = document.getElementById('oldPin').value;
+            const newPin = document.getElementById('newPin').value;
+
+            if (oldPin !== state.pin) {
+                showMessage('changePin', 'Incorrect current PIN ❌', 'error');
+                return;
+            }
+
+            if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
+                showMessage('changePin', 'New PIN must be exactly 4 digits', 'error');
+                return;
+            }
+
+            state.pin = newPin;
+            saveState();
+            closeModal('changePin');
+            showDashboardMessage('PIN changed successfully! ✅', 'success');
+        }
+
+        // ===== Reset =====
+        function resetATM() {
+            localStorage.clear();
+            state = { pin: '1234', balance: 5000.0, attempts: 3, blocked: false };
+            saveState();
+            document.getElementById('attemptsCount').textContent = '3';
+            showScreen('loginScreen');
+        }
+
+        // ===== Initialize =====
+        function init() {
+            if (state.blocked) {
+                showScreen('blockedScreen');
+            } else {
+                showScreen('loginScreen');
+                document.getElementById('attemptsCount').textContent = state.attempts;
+            }
+        }
+
+        // ===== Keyboard Support =====
+        document.addEventListener('keydown', function (e) {
+            const loginScreen = document.getElementById('loginScreen');
+            if (loginScreen.classList.contains('active')) {
+                if (e.key >= '0' && e.key <= '9') addDigit(e.key);
+                else if (e.key === 'Backspace' || e.key === 'Delete') clearPin();
+                else if (e.key === 'Enter') submitPin();
+            }
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal.active').forEach(modal => {
+                    const modalId = modal.id.replace('Modal', '');
+                    closeModal(modalId);
+                });
+            }
+        });
+
+        // Close modal on outside click
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function (e) {
+                if (e.target === this) {
+                    const modalId = this.id.replace('Modal', '');
+                    closeModal(modalId);
+                }
+            });
+        });
+
+        // Start the app
+        init();
+    </script>
+</body>
+
+</html>
